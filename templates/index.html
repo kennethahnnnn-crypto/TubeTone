@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TubeTone - Ringtone Maker</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; }
+        .container { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 500px; width: 100%; }
+        h1 { color: #333; text-align: center; }
+        input[type="text"] { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px; box-sizing: border-box; }
+        .slider-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="range"] { width: 100%; }
+        .btn { width: 100%; padding: 15px; background: #007bff; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; transition: 0.2s; }
+        .btn:hover { background: #0056b3; }
+        
+        /* Modal (Popup) Styles */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; padding: 20px; border-radius: 10px; max-width: 400px; text-align: center; }
+        .modal-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+        .btn-cancel { background: #ccc; color: #333; }
+        
+        /* Help Section */
+        .help-section { margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; font-size: 0.9em; color: #555; }
+        .help-title { cursor: pointer; color: #007bff; font-weight: bold; }
+        .help-content { display: none; margin-top: 10px; }
+        .loader { display: none; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 20px; height: 20px; animation: spin 2s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎵 TubeTone</h1>
+    <p style="text-align:center; color:#666;">Paste any URL (YouTube, SoundCloud, TikTok) to create an iPhone ringtone.</p>
+    
+    <form id="convertForm" action="/convert" method="POST">
+        <input type="text" name="url" placeholder="Paste Link Here..." required>
+        
+        <div class="slider-group">
+            <label>Start Time: <span id="startVal">0</span>s</label>
+            <input type="range" name="start_time" min="0" max="300" value="0" id="startRange">
+        </div>
+
+        <div class="slider-group">
+            <label>Duration: <span id="durVal">20</span>s (Max 30s)</label>
+            <input type="range" name="duration" min="1" max="30" value="20" id="durRange">
+        </div>
+
+        <button type="button" class="btn" onclick="showModal()">Create Ringtone</button>
+        <div id="loader" class="loader" style="margin-top:10px;"></div>
+    </form>
+
+    <div class="help-section">
+        <div class="help-title" onclick="toggleHelp()">❓ How do I create & set the ringtone? (Click to expand)</div>
+        <div class="help-content" id="helpText">
+            <ol>
+                <li>Paste the link and choose your snippet.</li>
+                <li>Click <b>Create</b> and download the <code>.m4r</code> file.</li>
+                <li>Save the file to your iPhone's <b>Files</b> app.</li>
+                <li>Open <b>GarageBand</b> (Free Apple App).</li>
+                <li>Create a new 'Audio Recorder' song.</li>
+                <li>Tap the loop icon (top right) -> Files -> Drag your ringtone in.</li>
+                <li>Share -> Ringtone.</li>
+            </ol>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="confirmModal">
+    <div class="modal-content">
+        <h3>⚠️ Almost Ready!</h3>
+        <p>Before we convert, remember:</p>
+        <p><b>You cannot install this directly from Safari.</b></p>
+        <p>You must save this file to "Files" and use GarageBand to set it as a ringtone.</p>
+        <div class="modal-buttons">
+            <button class="btn btn-cancel" onclick="closeModal()">Back</button>
+            <button class="btn" onclick="submitForm()">I Understand, Create It!</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Slider Logic
+    const startRange = document.getElementById('startRange');
+    const durRange = document.getElementById('durRange');
+    startRange.oninput = () => document.getElementById('startVal').innerText = startRange.value;
+    durRange.oninput = () => document.getElementById('durVal').innerText = durRange.value;
+
+    // Modal Logic
+    function showModal() {
+        const url = document.querySelector('input[name="url"]').value;
+        if(!url) { alert("Please paste a URL first!"); return; }
+        document.getElementById('confirmModal').style.display = 'flex';
+    }
+    function closeModal() {
+        document.getElementById('confirmModal').style.display = 'none';
+    }
+    function submitForm() {
+        closeModal();
+        document.getElementById('loader').style.display = 'block';
+        document.getElementById('convertForm').submit();
+        
+        // Simple trick to reset loader if download starts (approximate)
+        setTimeout(() => {
+             document.getElementById('loader').style.display = 'none';
+        }, 8000);
+    }
+
+    // Help Toggle
+    function toggleHelp() {
+        const content = document.getElementById('helpText');
+        content.style.display = content.style.display === 'block' ? 'none' : 'block';
+    }
+</script>
+
+</body>
+</html>
