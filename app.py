@@ -1,6 +1,7 @@
 import os
 import subprocess
 import uuid
+import shutil
 from flask import Flask, render_template, request, send_file, after_this_request
 import yt_dlp
 
@@ -31,19 +32,36 @@ def convert():
     temp_mp3 = f'{DOWNLOAD_FOLDER}/{unique_id}.mp3'
     output_filename = ""
 
+    # --- COOKIE FIX START ---
+    # We copy the secret cookie file to a writable location
+    secret_cookie_path = '/etc/secrets/cookies.txt'
+    writable_cookie_path = 'cookies_writable.txt'
+    
+    use_cookies = False
+    
+    # Check if we are on Render (Secret exists)
+    if os.path.exists(secret_cookie_path):
+        try:
+            shutil.copyfile(secret_cookie_path, writable_cookie_path)
+            use_cookies = True
+            print("Using Render secret cookies")
+        except Exception as e:
+            print(f"Cookie copy failed: {e}")
+            
+    # Fallback: Check if local cookies.txt exists (for testing on Mac)
+    elif os.path.exists('cookies.txt'):
+        shutil.copyfile('cookies.txt', writable_cookie_path)
+        use_cookies = True
+        print("Using local cookies")
+    # --- COOKIE FIX END ---
+
     try:
         # 1. Download Audio using yt-dlp
         print(f"Downloading: {url}")
-        # Define the path to the cookie file
-        # Check if we are on Render (Secret path) or Local (Local path)
-        cookie_path = '/etc/secrets/cookies.txt'
-        if not os.path.exists(cookie_path):
-            cookie_path = 'cookies.txt'  # Fallback for local testing
-
+        
         ydl_opts = {
             'format': 'bestaudio/best',
             'outtmpl': f'{DOWNLOAD_FOLDER}/{unique_id}.%(ext)s',
-            'cookiefile': cookie_path,  # <--- THIS IS THE KEY FIX
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
@@ -51,6 +69,10 @@ def convert():
             }],
         }
         
+        # Only add cookiefile if we successfully copied it
+        if use_cookies:
+            ydl_opts['cookiefile'] = writable_cookie_path
+
         title = "ringtone"
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
@@ -58,32 +80,29 @@ def convert():
             # Sanitize title
             title = "".join([c for c in title if c.isalnum() or c in (' ', '-', '_')]).strip()
 
-        # 2. Process Audio using FFmpeg DIRECTLY (Bypassing pydub)
-        # We use the system's ffmpeg command we installed via Homebrew
+        # 2. Process Audio using FFmpeg DIRECTLY
         output_filename = f"{DOWNLOAD_FOLDER}/{title[:20]}_ringtone.m4r"
         
         print("Trimming and converting...")
-        # Command: ffmpeg -i input.mp3 -ss START -t DURATION -c:a aac -f ipod output.m4r -y
         command = [
             'ffmpeg', 
             '-i', temp_mp3,
             '-ss', str(start_time),
             '-t', str(duration),
-            '-c:a', 'aac',      # Apple audio codec
-            '-b:a', '128k',     # Quality
-            '-f', 'ipod',       # Container format for m4r/m4a
+            '-c:a', 'aac',
+            '-b:a', '128k',
+            '-f', 'ipod',
             output_filename,
-            '-y'                # Overwrite if exists
+            '-y'
         ]
         
-        # Run the command and hide the messy logs
         subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         # 3. Clean up the original mp3
         if os.path.exists(temp_mp3):
             os.remove(temp_mp3)
 
-        # 4. Schedule cleanup of the ringtone file
+        # 4. Schedule cleanup of the ringtone AND the temp cookie file
         @after_this_request
         def remove_file(response):
             try:
@@ -103,7 +122,6 @@ def convert():
 
     except Exception as e:
         print(f"Error: {e}")
-        # Clean up if something failed
         if os.path.exists(temp_mp3): os.remove(temp_mp3)
         return f"Error processing video: {str(e)}", 500
 
