@@ -34,9 +34,16 @@ def convert():
     try:
         # 1. Download Audio using yt-dlp
         print(f"Downloading: {url}")
+        # Define the path to the cookie file
+        # Check if we are on Render (Secret path) or Local (Local path)
+        cookie_path = '/etc/secrets/cookies.txt'
+        if not os.path.exists(cookie_path):
+            cookie_path = 'cookies.txt'  # Fallback for local testing
+
         ydl_opts = {
             'format': 'bestaudio/best',
             'outtmpl': f'{DOWNLOAD_FOLDER}/{unique_id}.%(ext)s',
+            'cookiefile': cookie_path,  # <--- THIS IS THE KEY FIX
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
