@@ -59,15 +59,28 @@ def convert():
         # 1. Download Audio using yt-dlp
         print(f"Downloading: {url}")
         
+        # ... inside the convert() function ...
+
         ydl_opts = {
             'format': 'bestaudio/best',
             'outtmpl': f'{DOWNLOAD_FOLDER}/{unique_id}.%(ext)s',
+            # NEW: Camouflage as an iOS device to bypass bot checks
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['ios', 'android']
+                }
+            },
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
                 'preferredquality': '192',
             }],
+            'nocheckcertificate': True,
         }
+        
+        # Attach cookie file if we have it (Still good to have as backup)
+        if use_cookies:
+            ydl_opts['cookiefile'] = writable_cookie_path
         
         # Only add cookiefile if we successfully copied it
         if use_cookies:
